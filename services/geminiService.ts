@@ -1,26 +1,32 @@
 import { GoogleGenAI } from "@google/genai";
 import { TAG_GENERATION_SYSTEM_PROMPT } from '../constants';
 
-// Safely retrieve API key without crashing if 'process' is undefined in browser
-const getApiKey = () => {
+// Extremely safe way to get env var without crashing in browser
+const getApiKey = (): string | undefined => {
   try {
-    return (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : '';
+    // Check if process exists globally (Node/Build tools)
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
+    }
+    // Fallback for some bundlers that inject it directly
+    // @ts-ignore
+    if (typeof API_KEY !== 'undefined') return API_KEY;
   } catch (e) {
-    return '';
+    return undefined;
   }
+  return undefined;
 };
 
 export const generateTagContent = async (userPrompt: string): Promise<string> => {
   const apiKey = getApiKey();
   
   if (!apiKey) {
-    // Return a helpful mock response if no key is present, preventing app crash
     console.warn("Gemini API Key missing");
-    throw new Error("API Key is missing. AI features require configuration.");
+    // Do not throw error, return a friendly message to the UI
+    return "AI Generation is disabled (Missing API Key). Please deploy with a valid key or enter text manually.";
   }
 
   try {
-    // Initialize lazily to prevent top-level errors
     const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
@@ -34,8 +40,8 @@ export const generateTagContent = async (userPrompt: string): Promise<string> =>
     });
 
     return response.text || "Could not generate content.";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Generation Error:", error);
-    throw new Error("Failed to generate content with AI.");
+    return `Error generating content: ${error.message}`;
   }
 };
