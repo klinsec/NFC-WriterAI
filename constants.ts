@@ -9,6 +9,16 @@ export const SOCIAL_PREFIXES: Record<SocialPlatform, string> = {
   [SocialPlatform.GITHUB]: 'https://github.com/',
 };
 
+// Deep linking schemes to force open native apps on Android/iOS
+export const SOCIAL_SCHEMES: Record<SocialPlatform, string> = {
+  [SocialPlatform.INSTAGRAM]: 'instagram://user?username=',
+  [SocialPlatform.TWITTER]: 'twitter://user?screen_name=', // or x://
+  [SocialPlatform.LINKEDIN]: 'linkedin://profile/', // often harder to guess ID, but URI exists
+  [SocialPlatform.YOUTUBE]: 'vnd.youtube://user/', // or just normal URL usually opens app
+  [SocialPlatform.TIKTOK]: 'snssdk1233://user/profile/', // complex, fallback to https usually better
+  [SocialPlatform.GITHUB]: 'github://profile/', // less common
+};
+
 export const SOCIAL_ICONS: Record<SocialPlatform, string> = {
   [SocialPlatform.INSTAGRAM]: '📸',
   [SocialPlatform.TWITTER]: '🐦',

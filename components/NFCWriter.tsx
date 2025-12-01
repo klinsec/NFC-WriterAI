@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { NFCRecordData, RecordType, SocialPlatform } from '../types';
-import { SOCIAL_PREFIXES, SOCIAL_ICONS } from '../constants';
+import { SOCIAL_PREFIXES, SOCIAL_ICONS, SOCIAL_SCHEMES } from '../constants';
 import { generateTagContent } from '../services/geminiService';
 
 interface NFCWriterProps {
@@ -16,6 +16,7 @@ const NFCWriter: React.FC<NFCWriterProps> = ({ onLog }) => {
   const [urlVal, setUrlVal] = useState('');
   const [socialUser, setSocialUser] = useState('');
   const [socialPlatform, setSocialPlatform] = useState<SocialPlatform>(SocialPlatform.INSTAGRAM);
+  const [useDeepLink, setUseDeepLink] = useState(false);
   
   // AI State
   const [aiPrompt, setAiPrompt] = useState('');
@@ -44,10 +45,19 @@ const NFCWriter: React.FC<NFCWriterProps> = ({ onLog }) => {
           data: urlVal.startsWith('http') ? urlVal : `https://${urlVal}`
         };
       case 'social':
-        const prefix = SOCIAL_PREFIXES[socialPlatform];
-        // Clean username (remove @ if present)
         const cleanUser = socialUser.replace(/^@/, '');
-        const fullLink = `${prefix}${cleanUser}`;
+        let fullLink = '';
+
+        if (useDeepLink && SOCIAL_SCHEMES[socialPlatform]) {
+          // Use Deep Link (URI Scheme)
+          // Note: Some apps require specific IDs, but username works for Insta/Twitter usually
+          fullLink = `${SOCIAL_SCHEMES[socialPlatform]}${cleanUser}`;
+        } else {
+          // Use Standard Web Link
+          const prefix = SOCIAL_PREFIXES[socialPlatform];
+          fullLink = `${prefix}${cleanUser}`;
+        }
+
         return {
           recordType: "url",
           data: fullLink
@@ -63,7 +73,7 @@ const NFCWriter: React.FC<NFCWriterProps> = ({ onLog }) => {
 
   const writeToTag = async () => {
     if (!('NDEFReader' in window)) {
-      onLog("Web NFC is not supported on this device/browser.", 'error');
+      onLog("Web NFC is not supported. Use Chrome on Android with HTTPS.", 'error');
       return;
     }
 
@@ -93,7 +103,7 @@ const NFCWriter: React.FC<NFCWriterProps> = ({ onLog }) => {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex space-x-2 mb-6 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2">
         {[
           { id: 'url', label: 'Link / URL' },
           { id: 'social', label: 'Social Profile' },
@@ -103,7 +113,7 @@ const NFCWriter: React.FC<NFCWriterProps> = ({ onLog }) => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
               activeTab === tab.id
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
                 : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
@@ -145,7 +155,7 @@ const NFCWriter: React.FC<NFCWriterProps> = ({ onLog }) => {
                   }`}
                 >
                   <span>{SOCIAL_ICONS[platform]}</span>
-                  <span className="capitalize text-xs">{platform}</span>
+                  <span className="capitalize text-xs hidden sm:inline">{platform}</span>
                 </button>
               ))}
             </div>
@@ -160,6 +170,24 @@ const NFCWriter: React.FC<NFCWriterProps> = ({ onLog }) => {
                 onChange={(e) => setSocialUser(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-700 rounded-xl pl-8 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
               />
+            </div>
+
+            {/* Deep Link Toggle */}
+            <div className="pt-2 flex items-center justify-between bg-zinc-950/50 p-3 rounded-xl border border-zinc-800/50">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-zinc-200">Force App Open</span>
+                <span className="text-xs text-zinc-500">Writes specific app protocol (e.g. instagram://)</span>
+              </div>
+              <button 
+                onClick={() => setUseDeepLink(!useDeepLink)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                  useDeepLink ? 'bg-purple-600' : 'bg-zinc-700'
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  useDeepLink ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
             </div>
           </div>
         )}
@@ -194,7 +222,7 @@ const NFCWriter: React.FC<NFCWriterProps> = ({ onLog }) => {
               <button
                 onClick={handleAIBSGenerate}
                 disabled={aiLoading || !aiPrompt.trim()}
-                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all disabled:opacity-50 flex justify-center items-center"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all disabled:opacity-50 flex justify-center items-center"
               >
                 {aiLoading ? (
                   <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
@@ -221,7 +249,7 @@ const NFCWriter: React.FC<NFCWriterProps> = ({ onLog }) => {
           {isWriting ? (
             <>
               <span className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin"></span>
-              <span>Scanning...</span>
+              <span>Writing...</span>
             </>
           ) : (
             <>
