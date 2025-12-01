@@ -1,0 +1,5 @@
+{
+  "name": "NFC Forge",
+  "description": "An advanced Web NFC tool to read and write NDEF records, featuring deep linking for social media and AI-generated tag content.",
+  "requestFramePermissions": []
+}
